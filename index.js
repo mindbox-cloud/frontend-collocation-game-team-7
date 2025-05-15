@@ -2,6 +2,7 @@ var ROWS = 5;
 var COLS = 5;
 var CELL_WIDTH = "50px";
 var CELL_HEIGHT = "50px";
+var TICK = 1000;
 var generateHexColor = function () {
     return "#".concat(Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'));
 };
@@ -62,16 +63,28 @@ var PlayBoard = (function () {
     };
     return PlayBoard;
 }());
+var getParams = function () {
+    var _a, _b, _c;
+    var params = new URLSearchParams(location.search);
+    var width = (_a = params.get('width')) !== null && _a !== void 0 ? _a : ROWS;
+    var height = (_b = params.get('height')) !== null && _b !== void 0 ? _b : COLS;
+    var tick = (_c = params.get('tick')) !== null && _c !== void 0 ? _c : TICK;
+    return { width: width, height: height, tick: tick };
+};
 (function () {
     var _a;
+    var params = getParams();
+    document.getElementById('width').value = params.width;
+    document.getElementById('height').value = params.height;
+    document.getElementById('tick').value = params.tick;
     var root = (_a = document.getElementById('play-board')) !== null && _a !== void 0 ? _a : document.createElement('div');
     root.id = 'play-board';
     root.className = 'playboard';
-    var playBoard = new PlayBoard(root).init(ROWS, COLS);
+    var playBoard = new PlayBoard(root).init(params.height, params.width);
     playBoard.draw();
     setInterval(function () {
         playBoard.update();
         playBoard.draw();
-    }, 1000);
+    }, params.tick);
 })();
 //# sourceMappingURL=index.js.map

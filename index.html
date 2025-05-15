@@ -12,9 +12,24 @@
       display: grid;
       gap: 1px 
     }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      font-family: monospace;
+      align-items: flex-start;
+    }
+    .controls input {
+      width: 200px;
+    }
   </style>
 </head>
 <body>
+  <form method="get" class="controls" >
+    <label>Width <input id="width" name="width" /></label>
+    <label>Height <input id="height" name="height"/></label>
+    <label>Delay <input id="tick" name="tick"/></label>
+    <button type="submit">Save</button>
+  </form>
   <div id="play-board"></div>
   <script src="./index.js"></script>
 </body>
