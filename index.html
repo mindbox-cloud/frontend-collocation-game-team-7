@@ -21,16 +21,55 @@
     .controls input {
       width: 200px;
     }
+    .blur-board {
+      height: 100%;
+      /* filter: blur(16px); */
+    }
+    .section {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .play-board {
+      position: fixed;
+      inset: 0;
+    }
   </style>
 </head>
 <body>
-  <form method="get" class="controls" >
-    <label>Width <input id="width" name="width" /></label>
-    <label>Height <input id="height" name="height"/></label>
-    <label>Delay <input id="tick" name="tick"/></label>
-    <button type="submit">Save</button>
-  </form>
-  <div id="play-board"></div>
-  <script src="./index.js"></script>
+
+  <section class="section">
+    <form action="game.html" method="get" class="controls" >
+      <label>Width <input id="width" name="width" value="20"/></label>
+      <label>Height <input id="height" name="height" value="20"/></label>
+      <label>Delay <input id="tick" name="tick" value="100"/></label>
+      <label>Teams <textarea id="teams" rows="10" cols="40" name="teams">[
+  {
+    "id": 1,
+    "color": "red",
+    "sightRadius": 10,
+    "attackRadius": 2,
+    "accuracy": 1,
+    "coolDown": 5,
+    "ships": [{ "x": 1, "y": 1 }, { "x": 2, "y": 2 }, { "x": 3, "y": 3 }, { "x": 4, "y": 4 } ]
+  },
+  {
+    "id": 2,
+    "color": "green",
+    "sightRadius": 20,
+    "attackRadius": 2,
+    "accuracy": 1,
+    "coolDown": 5,
+    "ships": [{ "x": 11, "y": 1 }, { "x": 12, "y": 2 }, { "x": 13, "y": 3 }, { "x": 14, "y": 4 } ]
+  }
+      ]</textarea></label>
+      <button type="submit">Save</button>
+    </form>
+  </section>
+  
+  <div class="blur-board">
+  </div>
 </body>
 </html>
