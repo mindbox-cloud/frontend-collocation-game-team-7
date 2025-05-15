@@ -4,9 +4,7 @@ const COLS = 5;
 
 const TICK = 1000;
 
-const generateHexColor = () => {
-  return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
-};
+const randomNumberInt = (n: number) => Math.floor(Math.random() * n) + 1;
 
 const generateGUID = (): string => {
   return 'xxxxxxxx'.replace(/[xy]/g, (char) => {
@@ -15,6 +13,29 @@ const generateGUID = (): string => {
     return value.toString(16);
   });
 };
+
+const generateTeam = (teams: number, rows: number, colls: number) => {
+  const color = generateHexColor();
+  const totalShips = randomNumberInt(teams);
+  const ships =  Array.from({ length: totalShips }, () => ({ x: randomNumberInt(colls), y: randomNumberInt(rows) }));
+  const id = generateGUID();
+  const accuracy = randomNumberInt(10);
+  return  {
+    id,
+    color,
+    sightRadius: teams,
+    attackRadius: teams,
+    accuracy,
+    coolDown: teams,
+    ships
+  }
+}
+
+const generateHexColor = () => {
+  return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+};
+
+
 
 const createPlayBoardCell = (id: string) => {
   const div = document.createElement('div');
@@ -45,6 +66,10 @@ const createPlayBoardCell = (id: string) => {
 
   getElement () {
     return this.element
+  }
+
+  explode () {
+    return this.element.
   }
 
 
@@ -95,26 +120,29 @@ const createPlayBoardCell = (id: string) => {
     this.playCells.forEach(cell => cell.setColor('white'));
   }
 
-  setCell (x: number, y: number, color: string) {
+  getCellByCoords (x: number, y: number) {
     const cell = this.playCells[x + y * this.cols];
+    if (cell) {
+      return cell
+    }
+  }
+
+  setCell (x: number, y: number, color: string) {
+    const cell = this.getCellByCoords(x,y)
     if (cell) {
       cell.setColor(color);
     }
   }
+
 }
 
 const getParams = () => {
   const params = new URLSearchParams(location.search);
-  const width = params.get('width') ?? ROWS;
-  const height = params.get('height') ?? COLS;
+  const width = parseInt(params.get('width')) ?? ROWS;
+  const height = parseInt(params.get('height')) ?? COLS;
   const tick = params.get('tick') ?? TICK;
-  const teams = JSON.parse(params.get('teams')) ?? [
-    {
-      id: 1,
-      color: 'red',
-      ships: [{ x: 2, y: 3 }]
-    }
-  ];
+  const teamsParam = parseInt(params.get('teams')) ?? 3;
+  const teams = Array.from({ length: teamsParam }, () => generateTeam(teamsParam, width, height));
   return { width, height, tick, teams }
 }
 
@@ -220,7 +248,8 @@ class Team {
   accuracy: number;
   agent?: (state: unknown) => Action;
 
-  constructor({ color, sightRadius, attackRadius, coolDown, accuracy }) {
+  constructor({ color, sightRadius, attackRadius, coolDown, accuracy, id }) {
+    this.id = id;
     this.color = color;
     this.ships = [];
     this.sightRadius = sightRadius;
@@ -244,21 +273,27 @@ class Game {
   teams: Team[];
   deadShips: Ship[];
   playBoard: PlayBoard;
+  losers: string[];
+  session: number | null;
 
   constructor(playBoard: PlayBoard) {
     this.teams = [];
     this.deadShips = [];
     this.playBoard = playBoard;
+    this.losers = [];
+    this.session = null;
+  }
+
+  registerSession (session: number) {
+    this.session = session
   }
 
   init (teamsParam) {
     this.teams = [];
     this.deadShips = [];
-    const ds = new Ship();
-    ds.x = 10; ds.y = 10; ds.isDead = true;
-    this.deadShips.push(ds);
     teamsParam.forEach((param) => {
       const team = new Team({
+        id: param.id,
         color: param.color,
         sightRadius: param.sightRadius,
         attackRadius: param.attackRadius,
@@ -281,6 +316,10 @@ class Game {
     const allShips = this.teams.reduce((ships, team) => [...ships, ...team.ships], [...this.deadShips]);
     allShips.forEach((ship) => ship.reduceCooldown());
     this.teams.forEach(team => {
+      const isAllShipsDead = team.ships.filter(ship => !ship.isDead).length === 0;
+      if (isAllShipsDead && !this.losers.includes(team.id)) {
+        this.losers.push(team.id)
+      }
       const visibleShips = allShips.filter((testShip) => {
         const seesShip = team.seesShip(testShip);
         const sameTeam = team.ships.includes(testShip);
@@ -294,7 +333,6 @@ class Game {
         attackRadius: team.attackRadius,
       };
       const action = team.agent(state);
-      console.log(action);
       if (action instanceof MoveAction) {
         const ship = team.ships.find(ship => ship.id == action.ship);
         if (!ship || ship.isDead) return;
@@ -325,7 +363,13 @@ class Game {
           }
         }
       }
+
     });
+
+
+    if (this.losers.length === this.teams.length - 1) {
+      clearInterval(this.session)
+    }
   }
 
   draw() {
@@ -350,9 +394,13 @@ class Game {
   game.draw();
   playBoard.draw()
 
-  setInterval(() => {
+  const session = setInterval(() => {
     game.update();
     game.draw();
     playBoard.draw();
   }, params.tick);
+
+  game.registerSession(session)
+
 })()
+

@@ -10,15 +10,32 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
 var ROWS = 5;
 var COLS = 5;
 var TICK = 1000;
-var generateHexColor = function () {
-    return "#".concat(Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'));
-};
+var randomNumberInt = function (n) { return Math.floor(Math.random() * n) + 1; };
 var generateGUID = function () {
     return 'xxxxxxxx'.replace(/[xy]/g, function (char) {
         var random = Math.random() * 16 | 0;
         var value = char === 'x' ? random : (random & 0x3 | 0x8);
         return value.toString(16);
     });
+};
+var generateTeam = function (teams, rows, colls) {
+    var color = generateHexColor();
+    var totalShips = randomNumberInt(teams);
+    var ships = Array.from({ length: totalShips }, function () { return ({ x: randomNumberInt(colls), y: randomNumberInt(rows) }); });
+    var id = generateGUID();
+    var accuracy = randomNumberInt(10);
+    return {
+        id: id,
+        color: color,
+        sightRadius: teams,
+        attackRadius: teams,
+        accuracy: accuracy,
+        coolDown: teams,
+        ships: ships
+    };
+};
+var generateHexColor = function () {
+    return "#".concat(Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'));
 };
 var createPlayBoardCell = function (id) {
     var div = document.createElement('div');
@@ -82,16 +99,13 @@ var PlayBoard = (function () {
 var getParams = function () {
     var _a, _b, _c, _d;
     var params = new URLSearchParams(location.search);
-    var width = (_a = params.get('width')) !== null && _a !== void 0 ? _a : ROWS;
-    var height = (_b = params.get('height')) !== null && _b !== void 0 ? _b : COLS;
+    var width = (_a = parseInt(params.get('width'))) !== null && _a !== void 0 ? _a : ROWS;
+    var height = (_b = parseInt(params.get('height'))) !== null && _b !== void 0 ? _b : COLS;
     var tick = (_c = params.get('tick')) !== null && _c !== void 0 ? _c : TICK;
-    var teams = (_d = JSON.parse(params.get('teams'))) !== null && _d !== void 0 ? _d : [
-        {
-            id: 1,
-            color: 'red',
-            ships: [{ x: 2, y: 3 }]
-        }
-    ];
+    var teamsParam = (_d = parseInt(params.get('teams'))) !== null && _d !== void 0 ? _d : 3;
+    console.log('teamsParam', teamsParam);
+    var teams = Array.from({ length: teamsParam }, function () { return generateTeam(teamsParam, width, height); });
+    console.log('teams', teams);
     return { width: width, height: height, tick: tick, teams: teams };
 };
 var Ship = (function () {
@@ -174,7 +188,8 @@ var basicAgent = function (state) {
 };
 var Team = (function () {
     function Team(_a) {
-        var color = _a.color, sightRadius = _a.sightRadius, attackRadius = _a.attackRadius, coolDown = _a.coolDown, accuracy = _a.accuracy;
+        var color = _a.color, sightRadius = _a.sightRadius, attackRadius = _a.attackRadius, coolDown = _a.coolDown, accuracy = _a.accuracy, id = _a.id;
+        this.id = id;
         this.color = color;
         this.ships = [];
         this.sightRadius = sightRadius;
@@ -199,18 +214,19 @@ var Game = (function () {
         this.teams = [];
         this.deadShips = [];
         this.playBoard = playBoard;
+        this.losers = [];
+        this.session = null;
     }
+    Game.prototype.registerSession = function (session) {
+        this.session = session;
+    };
     Game.prototype.init = function (teamsParam) {
         var _this = this;
         this.teams = [];
         this.deadShips = [];
-        var ds = new Ship();
-        ds.x = 10;
-        ds.y = 10;
-        ds.isDead = true;
-        this.deadShips.push(ds);
         teamsParam.forEach(function (param) {
             var team = new Team({
+                id: param.id,
                 color: param.color,
                 sightRadius: param.sightRadius,
                 attackRadius: param.attackRadius,
@@ -233,6 +249,10 @@ var Game = (function () {
         var allShips = this.teams.reduce(function (ships, team) { return __spreadArray(__spreadArray([], ships, true), team.ships, true); }, __spreadArray([], this.deadShips, true));
         allShips.forEach(function (ship) { return ship.reduceCooldown(); });
         this.teams.forEach(function (team) {
+            var isAllShipsDead = team.ships.filter(function (ship) { return !ship.isDead; }).length === 0;
+            if (isAllShipsDead && !_this.losers.includes(team.id)) {
+                _this.losers.push(team.id);
+            }
             var visibleShips = allShips.filter(function (testShip) {
                 var seesShip = team.seesShip(testShip);
                 var sameTeam = team.ships.includes(testShip);
@@ -246,7 +266,6 @@ var Game = (function () {
                 attackRadius: team.attackRadius,
             };
             var action = team.agent(state);
-            console.log(action);
             if (action instanceof MoveAction) {
                 var ship_1 = team.ships.find(function (ship) { return ship.id == action.ship; });
                 if (!ship_1 || ship_1.isDead)
@@ -284,6 +303,9 @@ var Game = (function () {
                 }
             }
         });
+        if (this.losers.length === this.teams.length - 1) {
+            clearInterval(this.session);
+        }
     };
     Game.prototype.draw = function () {
         var _this = this;
@@ -304,10 +326,12 @@ var Game = (function () {
     game.init(params.teams);
     game.draw();
     playBoard.draw();
-    setInterval(function () {
+    var session = setInterval(function () {
         game.update();
         game.draw();
         playBoard.draw();
     }, params.tick);
+    game.registerSession(session);
+    console.log('game', game);
 })();
 //# sourceMappingURL=index.js.map
