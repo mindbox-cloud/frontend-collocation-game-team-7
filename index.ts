@@ -4,6 +4,7 @@ const COLS = 5;
 
 const CELL_WIDTH = "50px";
 const CELL_HEIGHT = "50px";
+const TICK = 1000;
 
 const generateHexColor = () => {
   return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
@@ -90,15 +91,29 @@ const createPlayBoardCell = (id: string) => {
   }
 }
 
+const getParams = () => {
+  const params = new URLSearchParams(location.search);
+  const width = params.get('width') ?? ROWS;
+  const height = params.get('height') ?? COLS;
+  const tick = params.get('tick') ?? TICK;
+  return { width, height, tick }
+}
+
+
 
 
 
 (() => {
+  const params = getParams();
+  document.getElementById('width').value = params.width;
+  document.getElementById('height').value = params.height;
+  document.getElementById('tick').value = params.tick;
+
   const root = document.getElementById('play-board') ?? document.createElement('div');
   root.id = 'play-board';
   root.className = 'playboard'
   
-  const playBoard = new PlayBoard(root).init(ROWS, COLS);
+  const playBoard = new PlayBoard(root).init(params.height, params.width);
   playBoard.draw()
 
 
@@ -107,7 +122,7 @@ const createPlayBoardCell = (id: string) => {
     playBoard.draw()
     // отрисовать поле
     
-  },1000);
+  }, params.tick);
 
 
 })()
