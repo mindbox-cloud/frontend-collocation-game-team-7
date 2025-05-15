@@ -69,7 +69,7 @@ const createPlayBoardCell = (id: string) => {
   }
 
   explode () {
-    return this.element.
+    return this.element
   }
 
 
@@ -214,27 +214,39 @@ function randomDir(): 0 | 1 | -1 {
   }
 }
 
-const basicAgent = (state: DecisionsState): Action => {
-  if (state.visibleShips.length) {
-    let target = null;
-    const possibleTargets = state.ourShips.reduce((targets, ship) => {
-      if (ship.coolDown > 0 || ship.isDead) return targets;
-      const additionalTargets = state.visibleShips
-        .filter((testShip) => ship.sees(testShip, state.attackRadius) && !testShip.isDead)
-        .map((targetShip) => ({ shootFrom: ship, shootAt: targetShip }));
-      return [...targets, ...additionalTargets];
-    }, []);
-    if (possibleTargets.length > 0) {
-      const index = Math.floor(Math.random() * possibleTargets.length);
-      const target = possibleTargets[index];
-      return new ShootAction(target.shootFrom.id, target.shootAt.id);
+const basicAgent = () => {
+  let lastDx = randomDir();
+  let lastDy = randomDir();
+  let lastTurned = 10;
+  return (state: DecisionsState): Action => {
+    if (state.visibleShips.length) {
+      let target = null;
+      const possibleTargets = state.ourShips.reduce((targets, ship) => {
+        if (ship.coolDown > 0 || ship.isDead) return targets;
+        const additionalTargets = state.visibleShips
+          .filter((testShip) => ship.sees(testShip, state.attackRadius) && !testShip.isDead)
+          .map((targetShip) => ({ shootFrom: ship, shootAt: targetShip }));
+        return [...targets, ...additionalTargets];
+      }, []);
+      if (possibleTargets.length > 0) {
+        const index = Math.floor(Math.random() * possibleTargets.length);
+        const target = possibleTargets[index];
+        return new ShootAction(target.shootFrom.id, target.shootAt.id);
+      }
     }
-  }
-  if (state.ourShips.length > 0) {
-    const i = Math.floor(Math.random() * state.ourShips.length);
-    return new MoveAction(state.ourShips[i].id, randomDir(), randomDir());
-  } else {
-    return new SkipAction();
+    if (state.ourShips.length > 0) {
+      const i = Math.floor(Math.random() * state.ourShips.length);
+      const action = new MoveAction(state.ourShips[i].id, lastDx, lastDy);
+      lastTurned -= 1;
+      if (lastTurned == 0) {
+        lastTurned = 10;
+        lastDx = randomDir();
+        lastDy = randomDir();
+      }
+      return action;
+    } else {
+      return new SkipAction();
+    }
   }
 }
 
@@ -300,7 +312,7 @@ class Game {
         coolDown: param.coolDown,
         accuracy: param.accuracy,
       });
-      team.agent = basicAgent;
+      team.agent = basicAgent();
       param.ships.forEach((shipParam) => {
         const ship = new Ship();
         ship.x = shipParam.x;

@@ -58,6 +58,9 @@ var Cell = (function () {
     Cell.prototype.getElement = function () {
         return this.element;
     };
+    Cell.prototype.explode = function () {
+        return this.element;
+    };
     Cell.prototype.draw = function () {
         this.element.style.backgroundColor = this.color;
     };
@@ -88,8 +91,14 @@ var PlayBoard = (function () {
     PlayBoard.prototype.clear = function () {
         this.playCells.forEach(function (cell) { return cell.setColor('white'); });
     };
-    PlayBoard.prototype.setCell = function (x, y, color) {
+    PlayBoard.prototype.getCellByCoords = function (x, y) {
         var cell = this.playCells[x + y * this.cols];
+        if (cell) {
+            return cell;
+        }
+    };
+    PlayBoard.prototype.setCell = function (x, y, color) {
+        var cell = this.getCellByCoords(x, y);
         if (cell) {
             cell.setColor(color);
         }
@@ -103,9 +112,7 @@ var getParams = function () {
     var height = (_b = parseInt(params.get('height'))) !== null && _b !== void 0 ? _b : COLS;
     var tick = (_c = params.get('tick')) !== null && _c !== void 0 ? _c : TICK;
     var teamsParam = (_d = parseInt(params.get('teams'))) !== null && _d !== void 0 ? _d : 3;
-    console.log('teamsParam', teamsParam);
     var teams = Array.from({ length: teamsParam }, function () { return generateTeam(teamsParam, width, height); });
-    console.log('teams', teams);
     return { width: width, height: height, tick: tick, teams: teams };
 };
 var Ship = (function () {
@@ -161,30 +168,42 @@ function randomDir() {
         case 2: return 0;
     }
 }
-var basicAgent = function (state) {
-    if (state.visibleShips.length) {
-        var target = null;
-        var possibleTargets = state.ourShips.reduce(function (targets, ship) {
-            if (ship.coolDown > 0 || ship.isDead)
-                return targets;
-            var additionalTargets = state.visibleShips
-                .filter(function (testShip) { return ship.sees(testShip, state.attackRadius) && !testShip.isDead; })
-                .map(function (targetShip) { return ({ shootFrom: ship, shootAt: targetShip }); });
-            return __spreadArray(__spreadArray([], targets, true), additionalTargets, true);
-        }, []);
-        if (possibleTargets.length > 0) {
-            var index = Math.floor(Math.random() * possibleTargets.length);
-            var target_1 = possibleTargets[index];
-            return new ShootAction(target_1.shootFrom.id, target_1.shootAt.id);
+var basicAgent = function () {
+    var lastDx = randomDir();
+    var lastDy = randomDir();
+    var lastTurned = 10;
+    return function (state) {
+        if (state.visibleShips.length) {
+            var target = null;
+            var possibleTargets = state.ourShips.reduce(function (targets, ship) {
+                if (ship.coolDown > 0 || ship.isDead)
+                    return targets;
+                var additionalTargets = state.visibleShips
+                    .filter(function (testShip) { return ship.sees(testShip, state.attackRadius) && !testShip.isDead; })
+                    .map(function (targetShip) { return ({ shootFrom: ship, shootAt: targetShip }); });
+                return __spreadArray(__spreadArray([], targets, true), additionalTargets, true);
+            }, []);
+            if (possibleTargets.length > 0) {
+                var index = Math.floor(Math.random() * possibleTargets.length);
+                var target_1 = possibleTargets[index];
+                return new ShootAction(target_1.shootFrom.id, target_1.shootAt.id);
+            }
         }
-    }
-    if (state.ourShips.length > 0) {
-        var i = Math.floor(Math.random() * state.ourShips.length);
-        return new MoveAction(state.ourShips[i].id, randomDir(), randomDir());
-    }
-    else {
-        return new SkipAction();
-    }
+        if (state.ourShips.length > 0) {
+            var i = Math.floor(Math.random() * state.ourShips.length);
+            var action = new MoveAction(state.ourShips[i].id, lastDx, lastDy);
+            lastTurned -= 1;
+            if (lastTurned == 0) {
+                lastTurned = 10;
+                lastDx = randomDir();
+                lastDy = randomDir();
+            }
+            return action;
+        }
+        else {
+            return new SkipAction();
+        }
+    };
 };
 var Team = (function () {
     function Team(_a) {
@@ -233,7 +252,7 @@ var Game = (function () {
                 coolDown: param.coolDown,
                 accuracy: param.accuracy,
             });
-            team.agent = basicAgent;
+            team.agent = basicAgent();
             param.ships.forEach(function (shipParam) {
                 var ship = new Ship();
                 ship.x = shipParam.x;
@@ -332,6 +351,5 @@ var Game = (function () {
         playBoard.draw();
     }, params.tick);
     game.registerSession(session);
-    console.log('game', game);
 })();
 //# sourceMappingURL=index.js.map
